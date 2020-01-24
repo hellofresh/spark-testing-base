@@ -22,6 +22,7 @@ from .testcase import SparkTestingBaseReuse
 
 import os
 import sys
+import logging
 from itertools import chain
 import operator
 import tempfile
@@ -48,14 +49,21 @@ class SQLTestCase(SparkTestingBaseReuse):
 
     def getConf(self):
         """Override this to specify any custom configuration."""
-        return {}
+        return SparkConf()
 
     def setUp(self):
         try:
-            from pyspark.sql import Session
-            self.session = Session.Builder.config(self.getConf())
+            from pyspark.sql import SparkSession
+            self.session = (
+                SparkSession
+                .builder
+                .config(conf=self.getConf())
+                .enableHiveSupport()
+                .getOrCreate()
+            )
             self.sqlCtx = self.session._wrapped
         except Exception:
+            logging.warning('could not create spark session, falling back to old approach')
             self.sqlCtx = SQLContext(self.sc)
 
     def assertDataFrameEqual(self, expected, result, tol=0):
